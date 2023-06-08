@@ -6,7 +6,6 @@ import jakarta.ws.rs.PathParam;
 import org.acme.CalcAction;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
-// This is a comment
 
 @Path("/calculate")
 @RegisterRestClient(configKey = "calc-service")
