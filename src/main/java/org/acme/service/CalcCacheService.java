@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.NonUniqueResultException;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.acme.CalcAction;
 import org.acme.CalcResponse;
@@ -21,13 +22,18 @@ public class CalcCacheService {
     @Inject
     EntityManager entityManager;
 
+    @Transactional
     public CalcResponse calculate(
             Double numOne,
             CalcAction action,
             Double numTwo
     ) {
         try {
-            CalcResponse response = this.entityManager.createQuery("SELECT * FROM CalcResponse WHERE CalcResponse.argOne=?1 AND CalcResponse.action=?2 AND CalcResponse.argTwo=?3 LIMIT 1;", CalcResponse.class)
+            CalcResponse response = this.entityManager
+                    .createQuery(
+                            "SELECT r FROM CalcResponse r WHERE r.argOne=?1 AND r.action=?2 AND r.argTwo=?3",
+                            CalcResponse.class
+                    )
                     .setParameter(1, numOne)
                     .setParameter(2, action)
                     .setParameter(3, numTwo)
@@ -40,16 +46,25 @@ public class CalcCacheService {
             log.info("Cache miss. Calling service.");
         }
 
-        CalcResponse.CalcResponseBuilder responseBuilder = CalcResponse.builder()
+        CalcResponse response = CalcResponse.builder()
                 .argOne(numOne)
                 .action(action)
                 .argTwo(numTwo)
                 .answer(this.calculatorService.calculate(
-                        numOne,
+                        Double.toString(numOne),
                         action,
-                        numTwo
-                ));
+                        Double.toString(numTwo)
+                ))
+                .build();
 
-        return responseBuilder.build();
+        this.entityManager.persist(response);
+
+        return response;
+    }
+
+    @Transactional
+    public CalcResponse addToCache(CalcResponse response){
+        this.entityManager.persist(response);
+        return response;
     }
 }
